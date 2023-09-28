@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import Board from './Board';
+import { getRandomIndex, replaceRowsToCols, isEqualMatrixes, isMatrixFull } from '../utils/helpers';
 
 const StyledGame = styled.div`
     width: 100vw;
@@ -45,46 +46,12 @@ const INITIAL_BOARD_STATE = [
     [0, 0, 0, 0],
 ];
 
-function getRandomIndex() {
-    return Math.round(Math.random() * 3);
-}
-
 export default function Game() {
     const [isGameOn, setIsGameOn] = useState(false);
+    const [isGameOverMessage, setIsGameOverMessage] = useState('');
     const [boardState, setBoardState] = useState(INITIAL_BOARD_STATE);
-    const handleKeyEvent = (event) => {
-        if (!isGameOn) {
-            return;
-        }
-        const { code } = event;
-    
-        switch (code) {
-            case 'ArrowDown':
-                handleDown();
-                break;
-            case 'ArrowUp':
-                handleUp();
-                break;
-            case 'ArrowRight':
-                handleRight();
-                break;
-            case 'ArrowLeft':
-                handleLeft();
-                break;
-            default:
-                break;
-            }
-    }
-        
-    useEffect(() => {
-        document.addEventListener('keyup', event => handleKeyEvent(event), false);
-        return () => {
-            document.removeEventListener('keyup', event => handleKeyEvent(event), true);
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isGameOn, boardState]);
 
-    const initRandomTiles = (number, board = boardState) => {
+    const initRandomTiles = useCallback((number, board = boardState) => {
         let setItems = 0;
 
         const newBoardState = structuredClone(board);
@@ -99,38 +66,10 @@ export default function Game() {
             }
         }
 
-        console.log(JSON.stringify(newBoardState));
         setBoardState(newBoardState);        
-    };
+    }, [boardState]);
 
-    const initBoard = () => {
-        setIsGameOn(true);
-        initRandomTiles(2, INITIAL_BOARD_STATE);
-    };
-
-    const handleDown = () => {
-        console.log('Down');
-        console.log(JSON.stringify(boardState));
-    };
-
-    const handleUp = () => {
-        console.log('Up');
-        console.log(JSON.stringify(boardState));
-    };
-
-    const handleLeft = () => {
-        const clonedBoardState = structuredClone(boardState);
-        console.log(JSON.stringify(boardState));
-        setBoardState(clonedBoardState.map(row => handleMoveLeft(row)));
-        initRandomTiles(1);
-    };
-
-    const handleRight = () => {
-        console.log('Right');
-        console.log(JSON.stringify(boardState));
-    };
-
-    const handleMoveLeft = (row) => {
+    const handleMoveLeft = useCallback((row) => {
         let newRow = [0, 0, 0, 0];
         if (row.reduce((acc, currentValue) => acc + currentValue, 0) !== 0) {
             newRow = row.filter(item => item > 0).concat(row.filter(item => item === 0));
@@ -143,14 +82,92 @@ export default function Game() {
             newRow = newRow.filter(item => item > 0).concat(newRow.filter(item => item === 0));
         }
         return newRow;
-    }
+    }, []);
 
+    const handleKeyPress = useCallback(code => {
+        let clonedBoardState;
+        let newBoardState;
+        switch (code) {
+            case 'ArrowDown':
+                clonedBoardState = replaceRowsToCols(boardState);
+                newBoardState = replaceRowsToCols(clonedBoardState.map(row => handleMoveLeft(row.reverse()).reverse()));;
+                break;
+            case 'ArrowUp':
+                clonedBoardState = replaceRowsToCols(boardState);
+                newBoardState = replaceRowsToCols(clonedBoardState.map(row => handleMoveLeft(row)));;
+                break;
+            case 'ArrowRight':
+                clonedBoardState = structuredClone(boardState);
+                newBoardState = clonedBoardState.map(row => handleMoveLeft(row.reverse()).reverse());
+                break;
+            case 'ArrowLeft':
+            default:
+                clonedBoardState = structuredClone(boardState);
+                newBoardState = clonedBoardState.map(row => handleMoveLeft(row));
+                break;
+        }
+
+        if (isEqualMatrixes(boardState, newBoardState)) {
+            return null;
+        }
+
+        initRandomTiles(1, newBoardState);
+    }, [boardState, handleMoveLeft, initRandomTiles]);
+
+    const handleKeyEvent = useCallback((event) => {
+        // console.log(`boardState is:\n${boardState[0]}\n${boardState[1]}\n${boardState[2]}\n${boardState[3]}\n`);
+        if (!isGameOn) {
+            return;
+        }
+        const { code } = event;
+
+        handleKeyPress(code);
+    
+    },[handleKeyPress, isGameOn]);
+        
+    useEffect(() => {
+        if (isGameOn) {
+            window.addEventListener('keyup', handleKeyEvent, false);
+            return () => {
+                window.removeEventListener('keyup', handleKeyEvent, false);
+            }
+        }
+    }, [isGameOn, handleKeyEvent]);
+
+    useEffect(() => {
+        boardState.forEach(row => {
+            row.forEach(tile => {
+                if (tile === 2048) {
+                    setIsGameOverMessage('You Won! :-)');
+                    setIsGameOn(false);
+                    return null;
+                }
+            })
+        });
+
+        if (isMatrixFull(boardState)) {
+            const clonedBoardState = structuredClone(boardState);
+            if (isEqualMatrixes(clonedBoardState.map(row => handleMoveLeft(row)), boardState) && 
+                isEqualMatrixes(clonedBoardState.map(row => [...handleMoveLeft([...row].reverse())].reverse()), boardState) &&
+                isEqualMatrixes(replaceRowsToCols(replaceRowsToCols(clonedBoardState).map(row => handleMoveLeft(row))), boardState) &&
+                isEqualMatrixes(replaceRowsToCols(replaceRowsToCols(clonedBoardState).map(row => [...handleMoveLeft([...row].reverse())].reverse())), boardState)) {
+                    setIsGameOverMessage('Game Over! :-(');
+                    setIsGameOn(false);
+                }
+        }
+    }, [boardState, handleMoveLeft]);
+
+    const initBoard = () => {
+        setIsGameOn(true);
+        setIsGameOverMessage('');
+        initRandomTiles(2, INITIAL_BOARD_STATE);
+    };
 
     return <StyledGame>
         <GameContainer>
             <Score>2048</Score>
             <NewButton onClick={initBoard}>New Game</NewButton>
-            <Board boardState={boardState} onChange={setBoardState} />
+            <Board boardState={boardState} isGameOverMessage={isGameOverMessage} />
         </GameContainer>
     </StyledGame>
 };

@@ -19,6 +19,24 @@ const StyledRow = styled.div`
     position: relative;
 `;
 
-export default function Board({boardState, setBoardState}) {
-    return <StyledBoard>{boardState.map((row, rowIndex) => <StyledRow key={rowIndex}>{row.map((tile, tileIndex) => <Tile key ={tileIndex} value={tile} />)}</StyledRow>)}</StyledBoard>
+const GameOverContainer = styled.div`
+    width: 500px;
+    height: 500px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(238, 228, 218, 0.73);
+    position: absolute;
+    top: 0;
+    left: 0;
+    font-size: 60px;
+    font-weight: bold;
+    color: #776e65;
+`;
+
+export default function Board({boardState, isGameOverMessage}) {
+    return (<StyledBoard>
+                {boardState.map((row, rowIndex) => <StyledRow key={rowIndex}>{row.map((tile, tileIndex) => <Tile key ={tileIndex} value={tile} />)}</StyledRow>)}
+                {isGameOverMessage && <GameOverContainer>{isGameOverMessage}</GameOverContainer>}
+            </StyledBoard>);
 };
