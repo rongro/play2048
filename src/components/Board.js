@@ -34,9 +34,9 @@ const GameOverContainer = styled.div`
     color: #776e65;
 `;
 
-export default function Board({boardState, isGameOverMessage}) {
+export default function Board({boardState, gameOverMessage}) {
     return (<StyledBoard>
                 {boardState.map((row, rowIndex) => <StyledRow key={rowIndex}>{row.map((tile, tileIndex) => <Tile key ={tileIndex} value={tile} />)}</StyledRow>)}
-                {isGameOverMessage && <GameOverContainer>{isGameOverMessage}</GameOverContainer>}
+                {gameOverMessage && <GameOverContainer>{gameOverMessage}</GameOverContainer>}
             </StyledBoard>);
 };

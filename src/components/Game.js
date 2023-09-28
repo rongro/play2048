@@ -48,10 +48,14 @@ const INITIAL_BOARD_STATE = [
 
 export default function Game() {
     const [isGameOn, setIsGameOn] = useState(false);
-    const [isGameOverMessage, setIsGameOverMessage] = useState('');
+    const [gameOverMessage, setGameOverMessage] = useState('');
     const [boardState, setBoardState] = useState(INITIAL_BOARD_STATE);
 
     const initRandomTiles = useCallback((number, board = boardState) => {
+        if (isMatrixFull(board)) {
+            return null;
+        }
+
         let setItems = 0;
 
         const newBoardState = structuredClone(board);
@@ -61,7 +65,8 @@ export default function Game() {
             const colIndex = getRandomIndex();
 
             if (newBoardState[rowIndex][colIndex] === 0) {
-                newBoardState[rowIndex][colIndex] = 2;
+                const newValue = Math.ceil(Math.random() * 100) > 80 ? 4 : 2;
+                newBoardState[rowIndex][colIndex] = newValue;
                 setItems++;
             }
         }
@@ -69,8 +74,15 @@ export default function Game() {
         setBoardState(newBoardState);        
     }, [boardState]);
 
+    const initBoard = () => {
+        setIsGameOn(true);
+        setGameOverMessage('');
+        initRandomTiles(2, INITIAL_BOARD_STATE);
+    };
+
     const handleMoveLeft = useCallback((row) => {
         let newRow = [0, 0, 0, 0];
+
         if (row.reduce((acc, currentValue) => acc + currentValue, 0) !== 0) {
             newRow = row.filter(item => item > 0).concat(row.filter(item => item === 0));
             for (let i = 0; i < newRow.length - 1; i++) {
@@ -87,6 +99,7 @@ export default function Game() {
     const handleKeyPress = useCallback(code => {
         let clonedBoardState;
         let newBoardState;
+
         switch (code) {
             case 'ArrowDown':
                 clonedBoardState = replaceRowsToCols(boardState);
@@ -115,10 +128,10 @@ export default function Game() {
     }, [boardState, handleMoveLeft, initRandomTiles]);
 
     const handleKeyEvent = useCallback((event) => {
-        // console.log(`boardState is:\n${boardState[0]}\n${boardState[1]}\n${boardState[2]}\n${boardState[3]}\n`);
         if (!isGameOn) {
-            return;
+            return null;
         }
+
         const { code } = event;
 
         handleKeyPress(code);
@@ -138,7 +151,7 @@ export default function Game() {
         boardState.forEach(row => {
             row.forEach(tile => {
                 if (tile === 2048) {
-                    setIsGameOverMessage('You Won! :-)');
+                    setGameOverMessage('You Won! :-)');
                     setIsGameOn(false);
                     return null;
                 }
@@ -151,23 +164,17 @@ export default function Game() {
                 isEqualMatrixes(clonedBoardState.map(row => [...handleMoveLeft([...row].reverse())].reverse()), boardState) &&
                 isEqualMatrixes(replaceRowsToCols(replaceRowsToCols(clonedBoardState).map(row => handleMoveLeft(row))), boardState) &&
                 isEqualMatrixes(replaceRowsToCols(replaceRowsToCols(clonedBoardState).map(row => [...handleMoveLeft([...row].reverse())].reverse())), boardState)) {
-                    setIsGameOverMessage('Game Over! :-(');
+                    setGameOverMessage('Game Over! :-(');
                     setIsGameOn(false);
                 }
         }
     }, [boardState, handleMoveLeft]);
 
-    const initBoard = () => {
-        setIsGameOn(true);
-        setIsGameOverMessage('');
-        initRandomTiles(2, INITIAL_BOARD_STATE);
-    };
-
     return <StyledGame>
         <GameContainer>
             <Score>2048</Score>
             <NewButton onClick={initBoard}>New Game</NewButton>
-            <Board boardState={boardState} isGameOverMessage={isGameOverMessage} />
+            <Board boardState={boardState} gameOverMessage={gameOverMessage} />
         </GameContainer>
     </StyledGame>
 };
